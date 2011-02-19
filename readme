@@ -1,0 +1,253 @@
+salt -- Sequencer Alternative
+v0.1 (codename: Arrhenius)
+v1.0 (codename: Lewis)
+a combination of chemistry, music, mathematics, and programming
+
+element
+stock/acid -- Input event set 1 (pH e.g. Chipmunk: Newtonian events (position, velocity, collision))
+stock/base -- Input event set 2 (e.g. MIDIator: MIDI events)
+pKb is the library size, describes capacity to react in solution (haha)
+
+experiment
+
+stock/source -- taxonomy of species (e.g. keydown, keyup)
+species -- event prototype 
+element < species
+atom -- a single event
+molecule -- a linked list of events (one element is the event and its links), associated with reactivity (e.g. pKa)
+-- def rotateional vibration:
+
+In the simplest prototype:
+
+# what happens if pipe starts backing up? e.g. 10/s added to pipe, but 2/s removed
+# still want to reflect real-time behaviour of source
+# finite length only allows push when something is pulled
+# also limits memory requirements
+# can also be dynamic, so that hopper size determines pressure and increases flow or width
+
+class Interface		# create an interface for every package you plan on interfacing with
+	def decode		# accepts atoms/molecules and converts them to messages
+	def encode		# accepts messages and converts them to atoms/molecules
+
+class Pipe		
+	$queue
+	$router
+	$pressure
+	$diameter or $grouping # (e.g. 2 objects, or 3 seconds); determines simultaneity of pull method
+	$length
+	$overflow
+	$hopper?
+	def add
+	def pull		# passes next in queue to router procedure
+					# passes molecule(s) to add method of returned object
+	def open		# start scanning queue
+	def close						
+
+class Vessel		# can be a random shitfest of objects
+	$solute			# mixture of components with quantities
+	$solvent
+	$overflow		# default overflow glassware -- only applicable if size is set
+	$size
+	$bunsen 		# time-expired evaporation
+	$filter
+	$temperature	# analogue of temperature
+	$total			
+	$active
+	def freeze
+	def scan		# iterates through content to generate collisions
+	      			# content.length CHOOSE two comparisons
+					# run in separate thread
+					# probability determined by [x,y]
+	def add			# passes content to filter
+					# adds returned value to mixture
+	def addReaction	# enables a reaction by adding a Salt::Reaction object
+
+class Species < Class
+	$structure
+
+class Molecule
+	$structure
+	$stability
+	def initialize (atoms, meta)
+
+class Atom # a single command/event in JSON format
+	$interface
+
+- mean of 6-12 rand[0,1] approximates Gaussian distribution with mean=0.5
+- if avg rxn rate is 10rxn/s
+- and scan freq is 5c/s
+- then avg rxn/scan is 2 rxns/cycle
+- generate many random numbers with limit mean of 2, and find mean
+- if mean > 1, trigger rxn
+- if mean < 1, do not trigger
+- wider boundary (i.e. large std deviation) will result in accumulated probability of 0 rxns
+- more random numbers will narrow distribution
+
+- avg rate is 10rxn/s
+- scan freq is 100c/s
+- therefore, avg is 0.1 rxns/cycle
+- gauss-random yields 12 rnxs this second, or 0.12 rnxs this cycle
+
+- avg rate is 10rxn/s
+- scan freq is 10c/s
+- therefore, avg is 1rxn/cycle
+- gauss-random yields 1.2rxn/cycle
+
+class Reaction
+	def ratelaw					# C(X)*C(Y)*e^(-1/T) returns rate of rxn (/s)
+	def reactants
+	def initialize (reactant1, reactant2, &schematic)
+	def react (v, r1, r2)		# applies schematic to reactants, adds products to v
+
+class Precipitation < Reaction	# transfers to pipe instead of mixture
+	
+Simplest machine I can think of:
+
+class EventType
+include Atom
+	def to_atom
+		# generates atom based on event info
+	end
+end
+
+class MIDIsender
+include Interface
+	def from_atom
+		# sends event based on atom input
+	end
+	def add
+	end
+end
+
+input = Input.new.to Translator.new{translate}.to EventType2.new
+
+i.add(EventType.new)
+	
+	## EVERY COMPONENT HAS add(atoms), to(component), continue()
+    ## 
+    ## CHAINING COMPONENTS
+    ## P.to M.to P2.to M2.to A.to R.to {|input|
+    ## return (input == 1) ? P3 : I
+    ## }
+    ## P3.to I
+    ## to RETURNS self
+    ## 
+    
+    ## VESSEL has $contents
+    ## C1 is concentration of element 1
+    ## R1_t is rate of addition of element 1 averaged over time t
+    ## N1 is number of atoms of element 1
+      ## type-agnostic
+        ## PIPE       drip        timed release of constant size
+        ## CAPACITOR  breakdown   untimed release of constant size
+        ## QUEUE      next        timed release of variable size based on historical size
+        ## BALLOON    deflate     timed release of variable size based on total size
+      ## type-dependent
+        ## TRANSISTOR conduct     release size proportional to R1
+        ## COLLIDER   collide     release size proportional to Q1 and Q2
+        ## REACTOR    react       timed probabilistic release 
+        
+    ## MEMBRANE has no contents -- function accepts and returns atoms
+    ## READ? / DISCARD? / CHANGE? / GENERATE? / CAN CALL ADD? / ADD CAN BE CALLED? 
+    ## ASSAY      Y - - - - -
+    ## FILTER     Y Y - - - -
+    ## ADAPTOR    Y - Y - - -
+    ## AMPLIFIER  - - - Y - - multiplies events
+    ## INDUCTOR   Y - - Y Y - generates events based on flow
+    ## SPLITTER   - - - - Y -
+    ## ROUTER     Y Y - - Y -
+    ## INPUT      - - - - - Y    
+    ## DELAY      - - - - - -
+    
+    ## JUNCTION has no contents -- function accepts atoms and 
+    ## ROUTER CAN READ ATOMS AND CHANGE OUTPUT BUT NOT CHANGE THEM
+ 
+    ## READER -- FUNCTION (NO STORAGE) ACCEPTS ATOMS AND RETURNS INFORMATION
+
+# define species
+class C < Salt::Molecule		# physics events
+class N < Salt::Molecule		# keyboard events
+class H2O < Salt::Molecule		# add solvent -- holds MIDI events in this example
+class P < Salt::Precipitate		# MIDI events -- calls atoms' interpreters
+
+# define reactions, which are maps from one type of molecule to another
+precipMIDI = Salt::Precipitation.new [C, H2O] {|mC, mH2O|
+	a1 =	{
+			type: :keydown,
+			note: mC.structure[:size],
+			velocity: mC.structure[:velocity]
+			}
+	a2 =	{
+			type: :keyup,
+			note: mC.structure[:size],
+			velocity: 100
+			}
+	return Salt::Molecule.new P [a1, a2]
+}
+
+# define mixtures
+mix1 = Salt::Mixture.new {H2O, 10, |input|
+	# filter with this
+	return modified_input
+}
+mix2 = Salt::Mixture.new()
+
+# define pipes
+debugPipe = Salt::Pipe.new {|input|
+	# conditionals to route to mixture or pipe
+	# perform whatever analysis you like
+# I = [f(input), g(input)]
+# I x M (2 x 3 weighting matrix) = q vector [q1, q2, q3]
+	return {mix1: q1, mix2: q2, pipe1: q3}
+}
+
+# hear the sound of your code
+# hear the music in your computer
+
+H = Salt::Atom.new collision_velocity
+N = Salt::Atom.new collision_location
+
+debugPipe.add Salt::Molecule.new C, [H, N] 
+debugPipe.next # sends next in debugPipe to mix1 : mix2
+
+
+collision -- event listener -- determines reaction *(y/n) and mechanism based on properties of molecules
+mechanism -- a way to transform a molecule (reactant) into another molecule (product)
+--- def site
+precipitate -- events that can be piped into the OS or into another vessel
+evapourate -- events that should be discarded into the fume-hood (which can actually also pipe into OS)
+reaction --
+####intramolecular (same reactants)
+####intermolecular (different reactants)
+
+titration/drip --> drip into vessel
+
+lab
+####bench
+####drip
+####vessel
+####pipe --> interface between vessels
+
+intermediate
+
+collision -- depends on environment
+reaction --- depends on molecules
+precipitation
+
+precipitation --- depends on environment -- acquires some properties of the base, and some properties of the acid
+--- precipitate --- fundamental unit piped to the OS
+
+reaction -- Interaction between acid and base
+
+
+library has species, capacity
+mapping MIDI events to (MIDIator)
+pKb is the event density/probability, hydrophile, acceptor, prototype: Hydroxide
+acid -- Physics event list, pKa, electrophile, donator, protonator, prototype: Proton
+(high or low pHysics, pKa)
+solution is an instrument
+vessel/stage/lab -- reaction environment
+p
+hood -- GL
+water ---
+Watch the reaction. HCl = Chipmunk + , Metal. Lattice.

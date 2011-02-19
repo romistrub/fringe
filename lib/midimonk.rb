@@ -19,9 +19,92 @@ end
 
 require 'chipmunk_draw'
 
-module MidiMonk
 
-	#### MidiMonk::Scene is a Gosu::Window that draws a CP::Space
+### salt -- Sequencer Alternative
+### v0.1 (codename: Arrhenius)
+### v1.0 (codename: Lewis)
+### a combination of chemistry, music, mathematics, and programming
+
+### element
+### stock/acid -- Input event set 1 (pH e.g. Chipmunk: Newtonian events (position, velocity, collision))
+### stock/base -- Input event set 2 (e.g. MIDIator: MIDI events)
+########### pKb is the library size, describes capacity to react in solution (haha)
+
+### experiment
+
+### stock/source -- taxonomy of species (e.g. keydown, keyup)
+### species -- event prototype 
+####### element < species
+### atom -- a single event
+### molecule -- a linked list of events (one element is the event and its links), associated with reactivity (e.g. pKa)
+######-- def rotateional vibration:
+
+############ ********** ##############
+# Structure #
+# Mixtures and pipes
+# In the simplest prototype:
+# 1) Chipmunk mixin Pipe. Pipe.input accepts a method that ChipmunkSource < Chipmunk mixin Source 
+# pipe from stock to mixture
+# 2) species are piped from stock into mixture as event occurs
+# 3) 
+# 2) mixture contains single solvent (probability of collision with solvent is always 1)
+# 3) 
+# input vs output pipes
+
+### mixture -- solvent with concentrations of species
+### --- contents (weighted array of molecules)
+### --- def e 
+###
+### add component
+
+
+### collision -- event listener -- determines reaction *(y/n) and mechanism based on properties of molecules
+### mechanism -- a way to transform a molecule (reactant) into another molecule (product)
+### --- def site
+### precipitate -- events that can be piped into the OS or into another vessel
+### evapourate -- events that should be discarded into the fume-hood (which can actually also pipe into OS)
+### reaction --
+####### intramolecular (same reactants)
+####### intermolecular (different reactants)
+
+### titration/drip --> drip into vessel
+
+### lab
+####### bench
+####### drip
+####### vessel
+####### pipe --> interface between vessels
+
+### intermediate
+
+### collision -- depends on environment
+### reaction --- depends on molecules
+### precipitation
+
+### precipitation --- depends on environment -- acquires some properties of the base, and some properties of the acid
+### --- precipitate --- fundamental unit piped to the OS
+
+### event macros
+
+
+
+### reaction -- Interaction between acid and base
+### 
+
+### library has species, capacity
+### mapping MIDI events to (MIDIator)
+### pKb is the event density/probability, hydrophile, acceptor, prototype: Hydroxide
+### acid -- Physics event list, pKa, electrophile, donator, protonator, prototype: Proton
+### (high or low pHysics, pKa)
+### solution is an instrument
+### vessel/stage/lab -- reaction environment
+### p
+### hood -- GL
+### water ---
+### Watch the reaction. HCl = Chipmunk + , Metal. Lattice.
+module Salt
+
+	#### Salt::Scene is a Gosu::Window that draws a CP::Space
 	class Window < Gosu::Window
 	include CP::DrawGL
 
