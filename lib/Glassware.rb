@@ -1,79 +1,72 @@
-NA
-NA::Atom
-NA::CL
-NA::CL::Output
-NA::CL::Membrane
-NA::CL::Vessel
-NA::CL::Pipe
-
 module NA
   
   module Atom
-    
     def to_atom
-      # access object properties to grab important information
+    self
     end
-  
   end
   
   module CL
 
     def to(component)
-    $next_component = component
+    @next_component = component
     self
     end
     
     private
     
-    def pass(*atoms)
-    $next_component.add atoms
+    def pass(atoms)
+    @next_component.add atoms
     end
     
-    def process(*atoms, &process)
-    atoms.collect{|i| (process || $process).call i}
+    def process(atoms, &p)
+    atoms.collect{|i| (p || @processor).call(i)}
     end
     
     class Component
     include CL
       
-      def initialize(next_component, &process)
-      $next_component = next_component
-      $process = process
+      def initialize(&processor)
+      @processor = processor || Proc.new {|atom| atom}
       end
   
-      def add(*atoms)
+      def add(atoms)
       end  
     
     end
     
     class Membrane < Component
-    
-      def add(*atoms)
+      def add(atoms)
       atoms && pass(process(atoms))
-      end
-    
+      end 
     end
       
+    class Input < Membrane 
+      def add(*objs)
+      super objs.collect {|obj| obj.to_atom}
+      end  
+    end
+    
     class Vessel < Component
       
       def initialize
       super
-      $contents = []
-      $overflow = nil
-      $size = 0
+      @contents = []
+      @overflow = nil
+      @size = 0
       end
       
       def to_ary
-      $contents
+      @contents
       end
       
-      def add(*atoms)
-      $contents.push(atoms.slice!(0, $size-$contents.size))
-      $overflow && $overflow.add(atoms)
+      def add(atoms)
+      @contents.push(atoms.slice!(0, @size-$contents.size))
+      @overflow && @overflow.add(atoms)
       end
 
       def extract(size=1)
-      $contents.shift(size)
+      @contents.shift(size)
       end
       
       def drip
@@ -81,12 +74,12 @@ module NA
       end
       
       def drain
-      extract($contents.size)
+      extract(@contents.size)
       end
          
       def start_scan(period=nil, res=10)
         stop_scan
-        $scanner = Thread.new {
+        @scanner = Thread.new {
           loop {
             t = Time.now.to_f
             if !period || (lastRun-t > period)
@@ -99,7 +92,7 @@ module NA
       end
       
       def stop_scan
-        $scanner && $scanner.kill
+        @scanner && @scanner.kill
       end
       
     end
@@ -108,32 +101,45 @@ module NA
       
       def initialize
       super
-      $pressure = args[:pressure] || 1
-      $width = args[:grouping] || 1
+      @pressure = args[:pressure] || 1
+      @width = args[:grouping] || 1
       end
       
       def drip
-      extract($width*$pressure)
+      extract(@width*@pressure)
       end
       
     end
 
     module Output
-    include Node
+    include CL
       
-      def from_atom(*atom)
+      def from_atom(atom)
       end
-      
-      def add(*atoms)
+    
+      def process(atoms, &p)
+      atoms.collect{|i| from_atom i}
+      end
+            
+      def add(atoms)
       atoms && process(atoms)
       end
       
+    end
+    
+    class Outputter
+    include Output
+    
+      def from_atom(atom)
+      puts atom
+      end
+    
     end
 
   end
       
 end
 
-
-  
-  
+class String
+include NA::Atom
+end
