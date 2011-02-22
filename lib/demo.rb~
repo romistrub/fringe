@@ -1,3 +1,5 @@
+require 'chipmunk_object'
+
 module ChipmunkDemos
   class Demo
     

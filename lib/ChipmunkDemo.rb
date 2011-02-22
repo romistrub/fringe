@@ -17,34 +17,13 @@ unless 'a'.respond_to?(:ord)
   end
 end
 
-require 'gosu'
-require 'chipmunk_adjust'
-require 'chipmunk_object'
-require 'draw_gl'
-
-require 'PyramidStack'
-require 'Plink'
-require 'Bounce'
-require 'Tumble'
-require 'PyramidTopple'
-require 'LogoSmash'
-require 'WalkBot'
-require 'TheoJansen'
-require 'Pump'
-require 'PinballPaddle'
+require './chipmunk_draw'
+require './demo'
+require './Tumble'
 
 module ChipmunkDemos
   DEMOS = [
-    LogoSmash::LogoSmashDemo,
-    PyramidStack::PyramidStackDemo,
-    Plink::PlinkDemo,
-    Tumble::TumbleDemo,
-    PyramidTopple::PyramidToppleDemo,
-    Bounce::BounceDemo,
-    WalkBot::WalkBotDemo,
-    TheoJansen::TheoJansenDemo,
-    Pump::PumpDemo,
-    PinballPaddle::PinballPaddleDemo
+    Tumble::TumbleDemo
   ]
   
   class MainWindow < Gosu::Window
