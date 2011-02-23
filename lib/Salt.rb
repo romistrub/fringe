@@ -1,6 +1,8 @@
 require 'json'
 require 'midiator'
 
+DEBUG = true
+
 module NA
   
   module Atom
@@ -10,6 +12,11 @@ module NA
   end
   
   module CL
+    
+    @@threads = {}
+    def self.threads
+      @@threads
+    end
 
     def to(component)
     @next_component = component
@@ -19,12 +26,14 @@ module NA
     private
     
     def pass(atoms)
+    puts "----"+self.class.inspect + " pass " + atoms.inspect if DEBUG
     @next_component.add atoms
     end
     
     # processes atoms [A B C] into atoms [p(A) p(B) p(C)]
     # flattens [[p(A) u(A)] [p(B) u(B)] [p(C) u(C)]] into [p(A) u(A) p(B) u(B) p(C) u(C)]
     def process(atoms, &p)
+    puts "----"+self.class.inspect + " process " + atoms.inspect if DEBUG
     atoms.collect{|atom| (p || @processor).call(atom)}.flatten(1)
     end
     
@@ -85,23 +94,24 @@ module NA
       end
          
       def start_scan(period=nil, res=0.01)
-        stop_scan
+        stop_scan 
         l = Time.now.to_f
-        @scanner = Thread.new {
+        i=0
+        @thread_id = l
+        @@threads[l] = Thread.new {
           loop {
             t = Time.now.to_f
             if !period || (t-l > period)
               l = t
-              pass(process(drip))
+              pass(process(drip)) unless @contents.empty?
             end
             sleep res
-            Thread.pass
           }
         }
       end
       
       def stop_scan
-        @scanner && @scanner.kill
+        @thread_id && @@threads[@thread_id].kill
       end
       
     end
@@ -127,6 +137,7 @@ module NA
       end
     
       def process(atoms, &p)
+      puts "----"+self.class.inspect + " process " + atoms.inspect if DEBUG
       atoms.collect{|i| from_atom i}
       end
             
@@ -140,7 +151,7 @@ module NA
     include Output
     
       def from_atom(atom)
-      puts atom
+      puts "Output: " + atom
       end
     
     end
@@ -151,12 +162,4 @@ end
 
 class String
 include NA::Atom
-end
-
-# play: note, duration, channel, velocity
-class MIDIator::Interface
-include NA::CL::Output
-  def from_atom(atom)
-    play(atom[:note], atom[:duration], atom[:channel], atom[:velocity])
-  end
 end
