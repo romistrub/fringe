@@ -1,6 +1,4 @@
-require 'json'
-require 'midiator'
-
+Thread::abort_on_exception = true
 DEBUG = true
 
 module NA

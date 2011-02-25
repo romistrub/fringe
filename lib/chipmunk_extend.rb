@@ -57,9 +57,9 @@ module CP
 		end
 		
 		def reset_forces
-		@chipmunk_objects.each do |obj|
-			obj.reset_forces if obj.is_a?(Body)
-		end
+  		@chipmunk_objects.each do |obj|
+  			obj.reset_forces if obj.is_a?(Body)
+  		end
 		end
 
 	end

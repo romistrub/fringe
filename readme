@@ -1,3 +1,5 @@
+The idea is that the "sound" (i.e. midi events) being discrete undergo real-time transformation just like a sound processor would alter a sound
+
 salt -- Sequencer Alternative
 v0.1 (codename: Arrhenius)
 v1.0 (codename: Lewis)

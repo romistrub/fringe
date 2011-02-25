@@ -17,9 +17,36 @@ unless 'a'.respond_to?(:ord)
   end
 end
 
+require './chipmunk_extend'
 require './chipmunk_draw'
 
 module CP
+  
+  ## Scene-expectant wrapper for CP::Space
+  class System < CP::Space
+    
+    attr_accessor :scene
+    
+    def initialize
+      super
+      @scene = nil  ## will contain reference to CP::Scene object  
+    end
+    
+    ## Shortcut method to scene parameters; e.g. mouse_vector = p:mouse 
+    def p(parameter)
+      @scene.p parameter rescue nil
+    end
+    
+    def to_scene(options={})
+      CP::Scene.new(self, options)
+    end
+  
+    ## Use CP::System objects to interact with CP::Scene by looking up method in scene object
+    def method_missing(id, *args, &block)
+      @scene.methods[id]
+    end
+  
+  end
   
   ## CP::Scene is designed to draw a CP::System
   class Scene < Gosu::Window
@@ -66,6 +93,7 @@ module CP
     
     end
 
+      
     #### Drawing Logic ####
     
     ## time in milliseconds to increment space by for each step
@@ -103,27 +131,6 @@ module CP
     
     def p(name)
       @parameters[name.to_sym].call self
-    end
-
-  end
-  
-  ## Scene-expectant wrapper for CP::Space
-  class System < CP::Space
-    
-    attr_accessor :scene
-    
-    def initialize
-      super
-      @scene = nil  ## will contain reference to CP::Scene object  
-    end
-    
-    ## Shortcut method to scene parameters; e.g. mouse_vector = p:mouse 
-    def p(parameter)
-      @scene.p parameter rescue nil
-    end
-    
-    def to_scene(options={})
-      CP::Scene.new(self, options)
     end
     
   end

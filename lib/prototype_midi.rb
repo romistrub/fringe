@@ -1,45 +1,21 @@
-require 'midiator'
-require 'narray'
 require './Salt.rb'
-include MIDIator::Notes
-include MIDIator::Scales
+require './Music.rb'
+
+=begin
+All machines have input and output. Everything in between is some sort of processor.
+This machine translates a string of text from the console into MIDI messages.
+
+TD DO
+- Read from shared memory (e.g. a pipe in Linux)
+- Only write machine activity logs to console
+- MIDI matrix composition using layered affectors
+=end
 
 
-class Array
-  def seek(dec) # accepts [0,1) (not including 1)
-    fetch((size*dec).to_int)
-  end
-  def position(el) # returns position in (0,1) of "centre" of element (think of array as discrete dimension)
-    (2*index(el) + 1) / (2*size)
-  end
-  def like(el, ary) # returns 
-    seek(ary.position(el))
-  end
-  def p(num)
-    map{|el|el+num}
-  end
-  def x(num)
-    map{|el|el*num}
-  end
-  def e(num)
-    + p(num)
-  end
-end
-
-# play: note, duration, channel, velocity
-class MIDIator::Interface
-include NA::CL::Output
-  def from_atom(atom)
-    puts "PLAY: " + atom.inspect
-    Thread.new {self.play(atom[:note], atom[:duration], atom[:channel], atom[:velocity])}
-  end
-end
-
-Thread::abort_on_exception = true
-
-### MIDI Interface
+### INITIALIZE MIDI INTERFACE
 midi = MIDIator::Interface.new
 midi.autodetect_driver
+midi.instruct_user!
 
 ###############
 ### MACHINE ###
@@ -77,9 +53,7 @@ to midi
 ### MAIN THREAD ###
 ###################
 
-midi.instruct_user!
-
-main_thread = Thread.new {loop {ip.add gets.chomp}} # get input from user
+main_thread = Thread.new {loop {ip.add gets.chomp}} # basic text input
 
 main_thread.join
 NA::CL.threads.entries.each{|e|e.join}
