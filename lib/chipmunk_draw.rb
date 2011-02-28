@@ -1,4 +1,4 @@
-require './chipmunk_extend'
+require './chipmunk_extend2'
 require 'opengl'
 require 'gosu'
 
@@ -54,9 +54,9 @@ module CP
 	module Object
 
 		def draw(window)
-		  if @chipmunk_objects
+		  if @children
 		    ## if this is a composite object, call draw() on primitives
-			@chipmunk_objects.each {|obj| obj.draw(window)}
+			@children.each {|obj| obj.draw(window)}
 			end
 		end
 	
@@ -65,7 +65,7 @@ module CP
 	class Space
 	  
 		def draw(window)
-		@chipmunk_objects.each {|obj| obj.draw(window)} ## dispatcher for chipmunk objects
+		@children.each {|obj| obj.draw(window)} ## dispatcher for chipmunk objects
 		end
 	
 	end
@@ -88,8 +88,21 @@ module CP
       BODY_COLOR       = [0.0, 0.0, 1.0]
       CONSTRAINT_COLOR = [0.5, 1.0, 0.5]
       
+      # Some basic drawing shortcuts I like to use.
+       def draw_rect(x,y,w,h,c)
+         self.draw_quad(x,y,c,x+w,y,c,x,y+h,c,x+w,y+h,c)
+       end
+       
+       def draw_point(x,y,c)
+         self.draw_rect(x-1,y-1,3,3,c)
+       end
+       
+       # Draws a point at an offset, in the color assigned for vertices.
+       def draw_vertex(x,y)
+         self.draw_point(x,y,VERTICES)
+       end
+      
       def glColor_from_pointer(obj)
-        return glColor3f(0.0,0.0,0.0) unless self.options[:color]
         val = obj.object_id.hash.hash
         
         r = (val>>0) & 0xFF
@@ -342,6 +355,7 @@ module CP
         else
         end
       end # def drawConstraint
+      
       def draw_BB(shape)
         bb = shape.bb
         l,r,t,b = bb.l, bb.r, bb.t, bb.b
@@ -358,8 +372,5 @@ module CP
         # can't get this data in ruby!
       end
     
-      def draw_demo(demo,options)
-  
-      end
     end # end module DrawGL
 end #module CP

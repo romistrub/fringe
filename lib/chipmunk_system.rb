@@ -17,7 +17,7 @@ unless 'a'.respond_to?(:ord)
   end
 end
 
-require './chipmunk_extend'
+require './chipmunk_extend2'
 require './chipmunk_draw'
 
 module CP
@@ -43,7 +43,7 @@ module CP
   
     ## Use CP::System objects to interact with CP::Scene by looking up method in scene object
     def method_missing(id, *args, &block)
-      @scene.methods[id]
+      @scene.method(id).call(*args, &block)
     end
   
   end
@@ -55,11 +55,12 @@ module CP
     def initialize(system, options={})
       
       ## DEFAULT OPTIONS
-      options[:xy]    ||= [641, 481]    ## window size (width x height)
+      options[:w]     ||= 641
+      options[:h]     ||= 481           ## window size (width x height)
       options[:title] ||= ""            ## window caption
       options[:steps] ||= 3             ## chipmunk steps per gosu window update
         
-      super (options[:xy][0], options[:xy][1], false)
+      super(options[:w], options[:h], false)
       
       ## BIND SYSTEM AND SCENE
       @system = system
@@ -67,7 +68,8 @@ module CP
       
       ## INSTANCE VARS
       @steps = options[:steps]
-      @controls = {}
+      @parameters = {}
+      @listeners = {}
 
       ## GOSU VARIABLES
       caption = options[:title]
@@ -103,14 +105,20 @@ module CP
     
     ## Step I of automatic Gosu loop    
     def update
-      @steps.times {@system.step(dt)}
+      @steps.times {
+        @system.step(dt)
+        @system.update(@parameters)
+        #@system.rehash_static
+        #puts @system.gravity
+        #puts @system.bricks.body.p.inspect
+      }
     end
     
     ## Step II of automatic Gosu loop
     def draw
       clip_to(0, 0, width, height) do ## limits drawing area to the rectangle given
         draw_rect(0, 0, width, height, Gosu::white) ## draws background
-        gl {gl_init; @system.draw;}  ## executes draw cascade in a clean GL environment
+      gl {gl_init; @system.draw(self);}  ## executes draw cascade in a clean GL environment
       end
     end
     
@@ -118,7 +126,7 @@ module CP
     
     ## Button Capture (mouse and keyboard)
     def button_down(id)
-      @listeners[id].call self
+      @listeners[id].call self if @listeners[id]
     end
 
     def add_listener(*ids, &f)

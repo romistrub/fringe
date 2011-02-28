@@ -2,220 +2,150 @@
 # Structs but not available in ruby. Note of course that we aren't accessing
 # the C Structs directly here, but since the values we are trying to keep
 # track of do not change over the life of a body or shape, it works out fine.
+#require "prettyprint"
 
-require 'chipmunk'
-
-def cpv(x,y)
-  CP::Vec2.new(x,y)
+# META
+class Array
+  # Pass each array element +i+ to a function [ obj.(resolver i) i ]
+  def dispatch(o, &resolver) self.collect {|i| o.send(resolver.call(i), i)}; end
+  def self.i(n) self.new(n).fill{|i| i}; end
 end
 
+class Symbol
+  def + (sym)
+    (self.to_s + sym.to_s).to_sym
+  end
+end
+
+class Module
+  def intercept_method(f, interceptor)
+    alias_method o="old_#{f}", f.to_sym
+    module_eval("def #{f}(*a,&b) aa=a&&a.clone; bb=b&&b.clone;"+interceptor+";#{o}(*aa,&bb);end")
+  end
+  def trap_args (f, *x)
+    attr_reader *(x.compact)
+    intercept_method f, Array.i(x.size).collect! {|i| "@#{x[i]} = a[#{i}];" if x[i] != nil }.join
+  end
+end
+
+require 'chipmunk-ffi'
+include CP
+
 module CP
+  
+  PRIMITIVES = [
+   :Constraint,
+   :Body,
+   :Shape]
+  
+  CONSTRAINTS = [
+  :DampedRotarySpring,
+  :DampedSpring,
+  :GearJoint,
+  :GrooveJoint,
+  :PinJoint,
+  :PivotJoint,
+  :RatchetJoint,
+  :RotaryLimitJoint,
+  :SimpleMotor,
+  :SlideJoint]
+  
+  SHAPES = [
+   :Circle,
+   :Segment,
+   :Poly]
 
-	def self.vzero
-	cpv(0.0,0.0)
-	end
-
-	def self.vlerp(v1,v2,t)
-	(v1*(1.0-t))+(v2*t)
-	end
-
-	def self.moment_for_segment(mass,a,b)
-	length = (a-b).length
-	offset = ((a+b)*(0.5))
-	return ((mass*length*length)/12.0) + (mass * (offset.dot offset))
-	end
-
-	# Chipmunk Object
-
-	# Manages composite objects using chipmunk_objects array, containing primitive Chipmunk objects (e.g. bodies, shapes and constraints).
-	# Primitive objects inherit chipmunk_objects array, but override to return self as single-element
-	# Static objects return empty array
-	# Composite objects with primitive children must +include CP::Object+ and call +init_chipmunk_object(*children)
-
-	# Objects +add_to_space+ contextually, so the space can indiscriminately +add_object+ without type-checking
-	module Object
+	# Chipmunk Object refines Space structure to allow hierarchy
+  # from Space > [Bodies, Static Shapes (.body), Active Shapes (.body), Constraints]
+  # to Space > Children [Body, Shapes]
+	# Components (one body and one+ shapes) are in +children+ array
+	module Composite
 		
-		# Returns the list of primitive Chipmunk objects (bodies, shapes and constraints)
-		def chipmunk_objects
-
-			if @chipmunk_objects
-				return @chipmunk_objects
-			else
-				raise "This CP::Object (#{self.class}) did not call #init_chipmunk_object."
-			end
-
-		end
+		def children() @children rescue raise "This CP::Object (#{self.class}) did not call #add_children."; end
+		def parent() @parent rescue raise "This CP::Object (#{self.class}) was not added using #add_children."; end
+    def body; @body; end
+    def shapes; @shapes; end
+          
+		# Returns flat array of children
+	  # [a.children, {|i| a.children[i].children}, {|i,j| a.children[i].children[j].children}, ..].flatten
+    # e.g. [CP::Object, [[CP::Body], [CP::Shape], [CP::Shape]], []]
+		def descendants() children + (children.collect{|c|c.ancestors}.flatten unless self.is_a Primitive); end
 		
-		private
+		# Returns array of ancestors
+		# [a.parent, a.parent.parent, a.parent.parent.parent, ..]
+		def ancestors() [parent] + (parent.ancestors if parent.respond_to? :parent); end
 		
+		# The recursive update() code is a bitch to understand! Here's some help:
+		# let T{A{X, Y, Z}, B} be a CP::Object hierarchy called from C(ontext) like T.update()
+		# As function compositions (T~ and T+ is T.pre_update and T.post_udpate resp.):
+		# T(D) = [T+ A+ X+ X~ A~ T~, T+ A+ Y+ Y~ A~ T~, T+ A+ Z+ Z~ A~ T~, T+ B+ B~ T~](D)
+		def update(downward_result = nil)
+      downward_result = pre_update(downward_result) if self.respond_to? :pre_update
+		  upward_result = children.collect {|child| child.update downward_result} unless self.is_a? Primitive
+      upward_result = post_update(upward_result) if self.respond_to? :post_update
+      upward_result
+    end
+    		
 		# Should be called during initialization of a CP::Object to set children
 		# Injects CP::Object primitives into @chipmunk_object array with elements [self] or [] 
-		def init_chipmunk_object(*objs)
-		bad_objs = objs.reject{|obj| obj.is_a?(CP::Object)} # objs must be a CP::Object
-		raise(ArgumentError, "The following objects: #{bad_objs.inspect} are not CP::Objects") unless bad_objs.empty?
-		@chipmunk_objects = objs.inject([]){|sum, obj| sum + obj.chipmunk_objects}.uniq
-		end
-		
-		def reset_forces
-  		@chipmunk_objects.each do |obj|
-  			obj.reset_forces if obj.is_a?(Body)
-  		end
+		def children= (objs)
+      bad_objs = objs.reject{|o|o.is_a?CP::Object}
+  		raise(ArgumentError, "Objects: #{bad_objs.inspect} are not CP::Objects") unless bad_objs.empty?
+		  @body = objs.collect{|o|o if o.is_a?CP::Body}.first
+		  @shapes = objs.collect{|o|o if o.is_a?CP::Shape}
+  		@children = objs.each {|child| child.parent = self}
 		end
 
+		def method_missing(name, *args)
+		  @body.method(name).call *args rescue "No method #{name} for #{self.class} or #{self.body.class}"
+		end
+		    def parent= (obj) @parent=obj;
+      puts "#{self.class}.parent = #{obj.class}"
+      sleep 1; end
+		protected
+		
+    module Primitive
+    include Object
+      def children() [self]; end
+    end
+  
 	end
 	
-	class Body
-	include CP::Object
+	# SET CLASSES/MODS AS PRIMITIVE	
+  PRIMITIVES.each {|o| CP::const_get(o).send(:include, Object::Primitive)}
+  SHAPES.each {|o| CP::Shape.const_get(o).send(:include, Shape)}
+  CONSTRAINTS.each {|o| CP::Constraint.const_get(o).send(:include, Constraint)}
+ 
+   # AND PAREMETER HOOKS
+    module Shape
+      Circle.trap_args :initialize, *[nil, :radius, :center]
+      Segment.trap_args :initialize, *[nil, :a, :b, :radius]
+      Poly.trap_args :initialize, *[nil, :verts, :offset]
+    end
 
-		def chipmunk_objects
-		[self]
-		end
-		
-		def add_to_space(space)
-		space.add_body(self)
-		end
-		
-		def remove_from_space(space)
-		space.remove_body(self)
-		end
-
-	end
-
-	class StaticBody < Body
-
-		def initialize
-		super(Float::INFINITY, Float::INFINITY)
-		end
-		
-		def chipmunk_objects
-		# return [] instead of [self] so the static body will not be added.
-		[]
-		end
-
-	end
-	
-	module Shape
-	include CP::Object
-		
-		def chipmunk_objects
-		[self]
-		end
-		
-		def add_to_space(space)
-		space.add_shape(self)
-		end
-		
-		def remove_from_space(space)
-		space.remove_shape(self)
-		end
-
-		class Circle
-
-			attr_reader :radius, :center
-			alias_method :orig_init, :initialize
-
-			def initialize(body, radius, center)
-			@radius, @center = radius, center
-			orig_init(body,radius,center)
-			end
-
-		end
-
-		class Segment
-
-			attr_reader :a, :b, :radius
-			alias_method :orig_init, :initialize
-
-			def initialize(body, a, b, radius)
-			@a, @b, @radius = a, b, radius
-			orig_init(body,a,b,radius)
-			end
-
-		end
-
-		class Poly
-
-			attr_reader :verts, :offset
-			alias_method :orig_init, :initialize
-
-			def initialize(body, verts, offset)
-			@verts, @offset = verts, offset
-			orig_init(body,verts,offset)
-			end
-
-		end
-	end
-
-	module StaticShape
-	include Shape
-		
-		def add_to_space(space)
-		space.add_static_shape(self)
-		end
-		
-		def remove_from_space(space)
-		space.remove_static_shape(self)
-		end
-
-		class Circle < Shape::Circle
-		include StaticShape
-		end
-		
-		class Segment < Shape::Segment
-		include StaticShape
-		end
-		
-		class Poly < Shape::Poly
-		include StaticShape
-		end
-
-	end
-		
-	module Constraint
-	include CP::Object
-	
-		def chipmunk_objects
-		[self]
-		end
-	
-		def add_to_space(space)
-		space.add_constraint(self)
-		end
-	
-		def remove_from_space(space)
-		space.remove_constraint(self)
-		end
-	
-	end
-	
 	class Space
-		
-		alias_method :orig_init, :initialize
-		
-		def initialize(*args)
-		orig_init(*args)
-		@chipmunk_objects = [] # top level chipmunk_objects
+    intercept_method :initialize, "@children=[]"
+	  def update(args) @children.collect {|child| child.update args}; end
+	  def add_object(*o) object(true, *o); end
+	  def remove_object(*o) object(false, *o); end
+		def object(add, *o) # expects composite objects
+		  o.each{|oi| # for each composite object
+		    oi.children.dispatch(self) {|c|
+		      ((add ? "add_":"remove_")+c.class.const_get(:RUBY_ALIAS).to_s)
+		    }
+		    oi.parent = self; 
+		    @children.send((add ? :push : :delete), oi)
+		  }
 		end
-
-		## add all obj.chipmunk_objects to space
-		## default chipmunk_objects is [self] (or [] for static), but may be overridden with children 
-		def add_object(obj)
-		@chipmunk_objects.push (obj) ## composite objects are added as a single object
-		obj.chipmunk_objects.each{|elt|	elt.add_to_space(self) } ## object's pieces are added to space
-		end
-	
-		def add_objects(*objs)
-		objs.each{|obj| add_object(obj)}
-		end
-	
-		def remove_object(obj)
-		obj.chipmunk_objects.each{|elt| elt.remove_from_space(self)}
-		end
-	
-		def remove_objects(*objs)
-		objs.each{|obj| remove_object(obj)}
-		end
-
 	end
 
+# SET RUBY ALIASES FOR EACH CP CLASS/MOD
+    RUBY_ALIASES = {
+      constraint: Constraint,
+      body: Body,
+      shape: Shape
+    }.collect {|name, o|
+      o.const_set :RUBY_ALIAS, name
+    }
+	
 end

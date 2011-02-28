@@ -2,32 +2,35 @@ require './Salt'
 require './Music'
 require './chipmunk_system'
 
-class Tumble < CP:System
-
+class TumbleSystem < CP::System
+  attr_reader :bricks, :tumbler
   def initialize
 
     super
-
+    self.gravity = vec2(0, 10)
+    @centric = Body.new(INFINITY, INFINITY) #centric static body
+    @centric.p = vec2(320,240)
     @tumbler = Tumbler.new
-    @bricks = (0...3).collect {|i| (0...7).collect{|j| Brick.new(cpv(i*60 + 170, 390 - j*30))}}.flatten(1)
+    @bricks = Brick.new vec2(160, 390)
+    @pin = Constraint::PinJoint.new(@centric, @tumbler.body, zero, zero)
 
-    self.add_objects(@tumbler,*@bricks)
-    self.add_collision_handler(:boxx, :boxx){|arbiter| puts arbiter.a 1 } ################## add to input here
+    self.add_object(@tumbler, @bricks)
+    #self.add_collision_handler(:boxx, :boxx){|arbiter| puts arbiter.a 1 } ################## add to input here
 
   end
 
 end #class TumbleScene
 
 class Brick
-include CP::Object
+include CP::Composite
 
   VERTICES = [
-  cpv(-30,-15),
-  cpv(-30, 15),
-  cpv( 30, 15),
-  cpv( 30,-15)]
+  vec2(-30,-15),
+  vec2(-30, 15),
+  vec2( 30, 15),
+  vec2( 30,-15)]
   MASS    = 1.0
-  MOMENT  = CP::moment_for_poly(MASS,VERTICES,CP::vzero)
+  MOMENT  = moment_for_poly(MASS,VERTICES,zero)
   ELASTICITY = 0.0
   FRICTION   = 0.7
 
@@ -35,26 +38,24 @@ include CP::Object
 
   def initialize(p)
 
-    @body = CP::Body.new(MASS,MOMENT)
-    @body.p = p
-    @shape = CP::Shape::Poly.new(@body,VERTICES,CP::vzero)
-    @shape.e = ELASTICITY
-    @shape.u = FRICTION
-    @shape.collision_type = :boxx
-    init_chipmunk_object(@body,@shape)
-
+    body = Body.new(MASS,MOMENT)
+    body.p = p
+    shape = Shape::Poly.new(body,VERTICES,zero)
+    shape.e = ELASTICITY
+    shape.u = FRICTION
+    self.add_children body, shape
   end #initialize
 
 end #class Brick
 
 class Tumbler
-include CP::Object
+include CP::Composite
 
   VERTICES = [
-  cpv(-200,-200),
-  cpv(-200, 200),
-  cpv( 200, 200),
-  cpv( 200,-200)]
+  vec2(-200,-200),
+  vec2(-200, 200),
+  vec2( 200, 200),
+  vec2( 200,-200)]
   ELASTICITY = FRICTION = 1.0
   SPIN = -0.8
 
@@ -62,18 +63,23 @@ include CP::Object
   
   def initialize
 
-    @body = CP::Body.new
-    @body.p = cpv(320,240)
-    @body.w = SPIN
-    @shapes = VERTICES.enum_cons(2).to_a.push([VERTICES[-1],VERTICES[0]]).map do |a,b|
-      seg = CP::Shape::Segment.new(@body,a,b,0.0)
+    body = Body.new(INFINITY, INFINITY)
+    body.p = vec2(320,240)
+    body.w = SPIN
+    shapes = VERTICES.enum_cons(2).to_a.push([VERTICES[-1],VERTICES[0]]).map do |a,b|
+      seg = Shape::Segment.new(body,a,b,0.0)
       seg.e = ELASTICITY
       seg.u = FRICTION
       seg
     end
-    init_chipmunk_object(@body,*@shapes)
+    puts body
+    self.add_children body, *shapes
 
   end #initialize
+def post_update(params)
+  body.update_position(parent.dt)
+  parent.rehash_static
+end
 
 end #class Tumbler
 
@@ -89,8 +95,8 @@ TD DO
 =end
 
 ### INITIALIZE WINDOW
-spindoc = Tumble.new
-scene = spindoc.to_scene({title: "Chipmunk to MIDI"})
+spindoc = TumbleSystem.new
+scene = spindoc.to_scene({title: "Chipmunk to MIDI"}).show
 #scene.add_listener (Gosu::KbR) {system.reverse_momentum}
 
 ### INITIALIZE MIDI INTERFACE
