@@ -106,8 +106,8 @@ module CP
     ## Step I of automatic Gosu loop    
     def update
       @steps.times {
-        #@system.step(dt)
-        #@system.update(@parameters)
+        @system.step(dt)
+        @system.update(@parameters)
         #@system.rehash_static
         #puts @system.gravity
         #puts @system.bricks.body.p.inspect
@@ -117,11 +117,11 @@ module CP
     ## Step II of automatic Gosu loop
     def draw
       clip_to(0, 0, width, height) do ## limits drawing area to the rectangle given
-        #draw_rect(0, 0, width, height, Gosu::white) ## draws background
+        draw_rect(0, 0, width, height, Gosu::white) ## draws background
         gl {
-        #gl_init
+        gl_init
   
-          #@system.draw(self);
+          @system.draw(self);
          }  ## executes draw cascade in a clean GL environment
       end
     end

@@ -6,6 +6,7 @@ class Window < Gosu::Window
   def draw
     clip_to(0, 0, 600, 400) do ## limits drawing area to the rectangle given
       gl {
+
         glClearColor(1.0,1.0,1.0,1.0)
           glMatrixMode(GL_PROJECTION)
           glLoadIdentity()
