@@ -17,8 +17,8 @@ unless 'a'.respond_to?(:ord)
   end
 end
 
-require './chipmunk_extend2'
 require './chipmunk_draw'
+require './chipmunk_extend2'
 
 module CP
   
@@ -40,12 +40,12 @@ module CP
     def to_scene(options={})
       CP::Scene.new(self, options)
     end
-  
-    ## Use CP::System objects to interact with CP::Scene by looking up method in scene object
-    def method_missing(id, *args, &block)
-      @scene.method(id).call(*args, &block)
+
+    ## time in milliseconds to increment space by
+    def dt
+      @scene.dt
     end
-  
+
   end
   
   ## CP::Scene is designed to draw a CP::System
@@ -72,7 +72,7 @@ module CP
       @listeners = {}
 
       ## GOSU VARIABLES
-      caption = options[:title]
+      @caption = options[:title]
  
       ## DEFAULT HUMAN INTERFACE
         
@@ -98,7 +98,7 @@ module CP
       
     #### Drawing Logic ####
     
-    ## time in milliseconds to increment space by for each step
+    ## time in milliseconds to increment space by for each window update
     def dt
       (1.0/60.0)/@steps
     end
@@ -106,8 +106,8 @@ module CP
     ## Step I of automatic Gosu loop    
     def update
       @steps.times {
-        @system.step(dt)
-        @system.update(@parameters)
+        #@system.step(dt)
+        #@system.update(@parameters)
         #@system.rehash_static
         #puts @system.gravity
         #puts @system.bricks.body.p.inspect
@@ -117,8 +117,12 @@ module CP
     ## Step II of automatic Gosu loop
     def draw
       clip_to(0, 0, width, height) do ## limits drawing area to the rectangle given
-        draw_rect(0, 0, width, height, Gosu::white) ## draws background
-      gl {gl_init; @system.draw(self);}  ## executes draw cascade in a clean GL environment
+        #draw_rect(0, 0, width, height, Gosu::white) ## draws background
+        gl {
+        #gl_init
+  
+          #@system.draw(self);
+         }  ## executes draw cascade in a clean GL environment
       end
     end
     

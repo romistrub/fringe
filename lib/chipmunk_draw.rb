@@ -6,80 +6,37 @@ require 'gosu'
 # require typechecking the shape to find out what draw method to use.
 
 module CP
-
-	module Shape
-
-		class Circle
-
-			def draw(window)
-			window.draw_circle_shape(self)
-			end
-
-		end
-
-		class Segment
-	
-			def draw(window)
-			window.draw_segment_shape(self)
-			end
-	
-		end
-
-		class Poly
-	
-			def draw(window)
-			window.draw_poly_shape(self)
-			end
-
-		end
-
-	end
-
-	module Constraint
-
-		def draw(window)
-		window.draw_constraint(self)
-		end
-
-	end
-
-	class Body
-
-		def draw(window)
-		#window.draw_vertex(self.p.x,self.p.y)
-		end
-
-	end
-
-	module Object
-
-		def draw(window)
-		  if @children
-		    ## if this is a composite object, call draw() on primitives
-			@children.each {|obj| obj.draw(window)}
-			end
-		end
-	
-	end
-
-	class Space
-	  
-		def draw(window)
-		@children.each {|obj| obj.draw(window)} ## dispatcher for chipmunk objects
-		end
-	
+  module    Node
+    module  Parent
+      def draw(window)
+        children.each {|obj|
+          obj.draw(window)
+        }
+      end
+    end
+  end
+  class     Body;       def draw(window) end; end
+  module    Constraint; def draw(window) window.draw_constraint(self);          end; end
+  module    Shape
+		class   Circle;     def draw(window) window.draw_circle_shape(self);        end; end
+class   Segment;    def draw(window) window.draw_segment_shape(self); puts "DDD"       end; end
+		class   Poly;       def draw(window) window.draw_poly_shape(self);          end; end
 	end
 
   module DrawGL
       include GL, GLU, GLUT
       
       def gl_init
-        glClearColor(1.0,1.0,1.0,1.0)
+       # debugger
+        #result = RubyProf.stop
+      #printer = RubyProf::CallTreePrinter.new(result)
+       #   printer.print(File.open("/home/romistrub/out.html", "w"))
+        #  debugger
+      glClearColor(1.0,1.0,1.0,1.0)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         glOrtho(0.0, 640.0, 480.0, 0.0, -1.0, 1.0)
-        #glTranslatef(0.5, 0.5, 0.0)
-        
+        glTranslatef(0.5, 0.5, 0.0)
         glEnableClientState(GL_VERTEX_ARRAY)
       end
       

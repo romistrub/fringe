@@ -1,20 +1,27 @@
 require './Salt'
 require './Music'
 require './chipmunk_system'
+require "ruby-prof"; RubyProf.start
+require 'ruby-debug'; Debugger.start
 
 class TumbleSystem < CP::System
   attr_reader :bricks, :tumbler
   def initialize
 
     super
-    self.gravity = vec2(0, 10)
-    @centric = Body.new(INFINITY, INFINITY) #centric static body
-    @centric.p = vec2(320,240)
+    self.gravity = vec2(0, 100)
+    #@centric = Body.new(INFINITY, INFINITY) #centric static body
+    #@centric.p = vec2(320,240)
     @tumbler = Tumbler.new
-    @bricks = Brick.new vec2(160, 390)
-    @pin = Constraint::PinJoint.new(@centric, @tumbler.body, zero, zero)
-
-    self.add_object(@tumbler, @bricks)
+    @bricks = []
+    for i in (0...1) do
+      for j in (0...1) do
+        @bricks << Brick.new(vec2(i*60 + 170, 390 - j*30))
+      end
+    end
+    #@pin = Constraint::PinJoint.new(@centric, @tumbler.body, zero, zero)
+    self.add_children @tumbler, *@bricks
+    pp self.children.collect{|c|c.children.collect{|cc|cc.class}}
     #self.add_collision_handler(:boxx, :boxx){|arbiter| puts arbiter.a 1 } ################## add to input here
 
   end
@@ -32,9 +39,7 @@ include CP::Composite
   MASS    = 1.0
   MOMENT  = moment_for_poly(MASS,VERTICES,zero)
   ELASTICITY = 0.0
-  FRICTION   = 0.7
-
-  attr_reader :body, :shape
+  FRICTION   = 0.1
 
   def initialize(p)
 
@@ -57,13 +62,11 @@ include CP::Composite
   vec2( 200, 200),
   vec2( 200,-200)]
   ELASTICITY = FRICTION = 1.0
-  SPIN = -0.8
-
-  attr_reader :body, :shapes
+  SPIN = -1
   
   def initialize
 
-    body = Body.new(INFINITY, INFINITY)
+    body = StaticBody.new
     body.p = vec2(320,240)
     body.w = SPIN
     shapes = VERTICES.enum_cons(2).to_a.push([VERTICES[-1],VERTICES[0]]).map do |a,b|
@@ -72,7 +75,6 @@ include CP::Composite
       seg.u = FRICTION
       seg
     end
-    puts body
     self.add_children body, *shapes
 
   end #initialize
@@ -96,7 +98,8 @@ TD DO
 
 ### INITIALIZE WINDOW
 spindoc = TumbleSystem.new
-scene = spindoc.to_scene({title: "Chipmunk to MIDI"}).show
+scene = spindoc.to_scene({:title => "Chipmunk to MIDI"})
+scene.show
 #scene.add_listener (Gosu::KbR) {system.reverse_momentum}
 
 ### INITIALIZE MIDI INTERFACE

@@ -2,13 +2,15 @@
 # Structs but not available in ruby. Note of course that we aren't accessing
 # the C Structs directly here, but since the values we are trying to keep
 # track of do not change over the life of a body or shape, it works out fine.
-#require "prettyprint"
+require "pp"
 #puts $-d
 
 # META
 class Array
   # Pass each array element +i+ to a function [ obj.(resolver i) i ]
-  def dispatch(o, &resolver) self.collect {|i| o.send(resolver.call(i), i)}; end
+  def dispatch(o, &resolver) self.collect {|i|
+    o.send(resolver.call(i), i)
+  }; end
   def self.i(n) self.new(n).fill{|i| i}; end
 end
 
@@ -38,14 +40,6 @@ include CP
 # Parents have C_TYPES (child types)
 
 module CP
-
-  RUBY_ALIASES = {
-    :constraint  => CP::Constraint,
-    :body => CP::Body,
-    :shape => CP::Shape
-  }.collect {|name, o|
-    o.const_set :RUBY_ALIAS, name
-  }
 
   PRIMITIVES = [
     :Constraint,
@@ -84,7 +78,7 @@ module CP
     # T(D) = [T+ A+ X+ X~ A~ T~, T+ A+ Y+ Y~ A~ T~, T+ A+ Z+ Z~ A~ T~, T+ B+ B~ T~](D)
     def update(result = nil)
       result = pre_update(result) if self.respond_to? :pre_update
-      result = children.collect {|child| child.update result} if children
+      result = children.collect {|child| child.update result} if self.respond_to? :children
       result = post_update(result) if self.respond_to? :post_update
       result
     end
@@ -107,15 +101,23 @@ module CP
       include Node
       
       def children() @children.values.flatten(1); end
-      def categorize(objs) objs.group_by{|o| self.class.const_get(C_TYPES[o]).name}; end ################################################
+      def c() @children; end
+      def categorize(objs)
+        objs.group_by{|o|
+        self.class::C_TYPES.select {|type| o.is_a? type}.first.name.split("::")[-1].to_sym
+          
+         }
+      end ################################################
       
       # Should be called during initialization of a CP::Object to set children
       # Injects CP::Object primitives into @chipmunk_object array with elements [self] or []     
       def add_children (*objs)
-        children = @children || {}
+        @children ||= {}
         objs = categorize(objs)
-        (children.keys | objs.keys).each {|key| @children[key] = objs[key] | children[key]}
-        @children.each {|child| child.parent = self}
+        (@children.keys | objs.keys).each {|key|
+          @children[key] =  (objs[key] ||= []) | (@children[key] ||= []) 
+        }
+        children.each {|child| child.parent = self}
       end
       
       def remove_children (*objs)
@@ -127,12 +129,23 @@ module CP
     end
 
   end
-    
+
+  # Static functionality is to allow for drawing without adding to the space
+  module Static
+  end
+      
   class  Body;
     include Node::Child::Primitive;
     P_TYPE = CP::Body;
   end
 
+  class StaticBody < Body
+    include Static
+    def initialize
+      super(INFINITY, INFINITY)
+    end
+  end
+  
   module Constraint
     include Node::Child::Primitive;
     P_TYPE = CP::Constraint;
@@ -154,10 +167,10 @@ module CP
   module Composite
     include Node::Child, Node::Parent
     C_TYPES = [CP::Body, CP::Shape, CP::Constraint]
-    def bodies()      @children[:CP::Body];          end
-    def shapes()      @children[:CP::Shape];         end
-    def constraints() @children[:CP::Constraint];    end
-    def body()        @children[:CP::Body].first();  end
+    def bodies()        @children[:Body] || nil;  end
+    def shapes()        @children[:Shape] || nil; end
+    def constraints() @children[:Constraint] || nil;    end
+    def body()        @children[:Body][0] || nil;  end
   end
     
   class Space
@@ -165,19 +178,20 @@ module CP
     include Node::Parent
     C_TYPES = [CP::Body, CP::Shape, CP::Constraint, CP::Composite]
 
-    def bodies()      @children[:CP::Body];          end
-    def shapes()      @children[:CP::Shape];         end
-    def constraints() @children[:CP::Constraint];    end
-    def composites()  @children[:CP::Composite];     end 
-    
+    def bodies()      @children[:Body] || nil;          end
+    def shapes()      @children[:Shape] || nil;         end
+    def constraints() @children[:Constraint] || nil;    end
+    def composites()  @children[:Composite] || nil;     end 
+          
+    alias_method :add_nodes, :add_children
+    alias_method :remove_nodes, :remove_children    
+
     def add_children(*o) with_objects("add", *o); end
     def remove_children(*o) with_objects("remove", *o); end
+    def add_static(obj); end
     
     private
-    
-    alias_method :add_nodes, :add_children
-    alias_method :remove_nodes, :remove_children
-    
+        
     # Use with_objects to perform object behaviour that is similar across child objects
     def with_objects(action, *objects)
       debug = "#{self.class}#with_object"
@@ -187,21 +201,27 @@ module CP
       when "remove";  [:remove_nodes, "remove_"]
       else; raise ArgumentError.new "#{debug} [action] expects 'add'/'remove'; received #{action.inspect}"
       end    
-      
       objects.each{|object|
-        
         primitives = case
         when object.is_a?(Composite);  object.children
         when object.is_a?(Primitive);  [object]
         else; raise ArgumentError.new "#{self.class}#with_object expects (action, *objects): #{object.inspect} is not a valid object"
         end
-      
-        primitives.dispatch(self) {|primitive| prefix + primitive.class.const_get(:RUBY_ALIAS).to_s}
+        primitives.dispatch(self) {|primitive|
+           prefix + primitive.class.const_get(:RUBY_ALIAS).to_s
+        } 
         object.parent = self;
         self.method(command).call(object)
       }
     end
- 
+RUBY_ALIASES = {
+  :constraint  => CP::Constraint,
+  :body => CP::Body,
+  :shape => CP::Shape,
+  :static => CP::Static
+}.collect {|name, o|
+  o.const_set :RUBY_ALIAS, name
+}
   end
     
   class ArgumentError < ArgumentError
