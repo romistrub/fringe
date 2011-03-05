@@ -9,19 +9,17 @@ class TumbleSystem < CP::System
   def initialize
 
     super
-    self.gravity = vec2(0, 100)
-    #@centric = Body.new(INFINITY, INFINITY) #centric static body
-    #@centric.p = vec2(320,240)
+    self.gravity = vec2(0, 400)
     @tumbler = Tumbler.new
     @bricks = []
-    for i in (0...1) do
-      for j in (0...1) do
-        @bricks << Brick.new(vec2(i*60 + 170, 390 - j*30))
-      end
-    end
-    #@pin = Constraint::PinJoint.new(@centric, @tumbler.body, zero, zero)
+    @bricks << Brick.new(vec2(240, 320),2)
+    @bricks << Brick.new(vec2(150, 320),3)
+    @bricks << Brick.new(vec2(160, 240),4)
+    @pin0 = Constraint::PinJoint.new(@tumbler.body, @bricks[0].body, zero, zero)
+    @pin1 = Constraint::PinJoint.new(@bricks[0].body, @bricks[1].body, zero, zero)
+    @pin2 = Constraint::PinJoint.new(@bricks[1].body, @bricks[2].body, zero, zero)
     self.add_children @tumbler, *@bricks
-    pp self.children.collect{|c|c.children.collect{|cc|cc.class}}
+    self.add_children @pin0, @pin1, @pin2
     #self.add_collision_handler(:boxx, :boxx){|arbiter| puts arbiter.a 1 } ################## add to input here
 
   end
@@ -32,23 +30,24 @@ class Brick
 include CP::Composite
 
   VERTICES = [
-  vec2(-30,-15),
-  vec2(-30, 15),
-  vec2( 30, 15),
-  vec2( 30,-15)]
-  MASS    = 1.0
-  MOMENT  = moment_for_poly(MASS,VERTICES,zero)
-  ELASTICITY = 0.0
-  FRICTION   = 0.1
+  vec2(-15,-15),
+  vec2(-15, 15),
+  vec2( 15, 15),
+  vec2( 15,-15)]
 
-  def initialize(p)
+  def initialize(p,l)
 
-    body = Body.new(MASS,MOMENT)
+    body = Body.new(1.0, moment_for_poly(1.0,VERTICES,zero))
     body.p = p
+    body.v = vec2(0,800)
+    
     shape = Shape::Poly.new(body,VERTICES,zero)
-    shape.e = ELASTICITY
-    shape.u = FRICTION
+    shape.e = 0.8
+    shape.u = 0.1
+    shape.layers = l
+    
     self.add_children body, shape
+  
   end #initialize
 
 end #class Brick
@@ -56,35 +55,28 @@ end #class Brick
 class Tumbler
 include CP::Composite
 
-  VERTICES = [
-  vec2(-200,-200),
-  vec2(-200, 200),
-  vec2( 200, 200),
-  vec2( 200,-200)]
-  ELASTICITY = FRICTION = 1.0
-  SPIN = -1
-  
   def initialize
 
     body = StaticBody.new
     body.p = vec2(320,240)
-    body.w = SPIN
-    shapes = VERTICES.enum_cons(2).to_a.push([VERTICES[-1],VERTICES[0]]).map do |a,b|
-      seg = Shape::Segment.new(body,a,b,0.0)
-      seg.e = ELASTICITY
-      seg.u = FRICTION
-      seg
-    end
-    self.add_children body, *shapes
+    body.w = 0
+    
+    segments = Path.circle(body, 1, 20, 100){|segment|
+      segment.e = 1.0
+      segment.u = 1.0
+      #segment.surface_v = vec2(100,0)
+    }
+
+    self.add_children body, *segments
 
   end #initialize
-def post_update(params)
-  body.update_position(parent.dt)
-  parent.rehash_static
-end
+
+  def post_update(params)
+    body.update_position(parent.dt)
+    parent.rehash_static
+  end
 
 end #class Tumbler
-
 
 =begin
 All machines have input and output. Everything in between is some sort of processor.
@@ -97,7 +89,7 @@ TD DO
 =end
 
 ### INITIALIZE WINDOW
-spindoc = TumbleSystem.new
+spindoc = TumbleSystem.new.start
 scene = spindoc.to_scene({:title => "Chipmunk to MIDI"})
 scene.show
 #scene.add_listener (Gosu::KbR) {system.reverse_momentum}
@@ -147,3 +139,4 @@ main_thread = Thread.new {loop {ip.add gets.chomp}} # basic text input
 
 main_thread.join
 NA::CL.threads.entries.each{|e|e.join}
+CP::System.threads.entries.each{|e|e.join}

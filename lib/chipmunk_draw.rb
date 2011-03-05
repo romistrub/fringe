@@ -19,7 +19,7 @@ module CP
   module    Constraint; def draw(window) window.draw_constraint(self);          end; end
   module    Shape
 		class   Circle;     def draw(window) window.draw_circle_shape(self);        end; end
-class   Segment;    def draw(window) window.draw_segment_shape(self); puts "DDD"       end; end
+    class   Segment;    def draw(window) window.draw_segment_shape(self);       end; end
 		class   Poly;       def draw(window) window.draw_poly_shape(self);          end; end
 	end
 

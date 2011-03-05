@@ -84,17 +84,17 @@ module CP
     end
     
     module Child
-      
+  
       include Node
     
       attr_accessor :parent
     
-      module Primitive
+    end
     
-        include Child
-     
-      end
-    
+    module Primitive
+  
+      include Child
+   
     end
     
     module Parent
@@ -104,9 +104,8 @@ module CP
       def c() @children; end
       def categorize(objs)
         objs.group_by{|o|
-        self.class::C_TYPES.select {|type| o.is_a? type}.first.name.split("::")[-1].to_sym
-          
-         }
+          self.class::C_TYPES.select {|type| o.is_a? type}.first.name.split("::")[-1].to_sym
+        }
       end ################################################
       
       # Should be called during initialization of a CP::Object to set children
@@ -199,13 +198,14 @@ module CP
       command, prefix, primitives = case action
       when "add";     [:add_nodes,    "add_"]
       when "remove";  [:remove_nodes, "remove_"]
-      else; raise ArgumentError.new "#{debug} [action] expects 'add'/'remove'; received #{action.inspect}"
+      else; raise CP::ArgumentError.new(self, "action", ["add", "remove"], action)
       end    
       objects.each{|object|
+    
         primitives = case
-        when object.is_a?(Composite);  object.children
-        when object.is_a?(Primitive);  [object]
-        else; raise ArgumentError.new "#{self.class}#with_object expects (action, *objects): #{object.inspect} is not a valid object"
+        when object.is_a?(CP::Composite);  object.children
+        when object.is_a?(CP::Node::Primitive);  [object]
+        else; raise CP::ArgumentError.new(self, "objects", ["CP::Composite", "CP::Node::Primitive"], object)
         end
         primitives.dispatch(self) {|primitive|
            prefix + primitive.class.const_get(:RUBY_ALIAS).to_s
@@ -214,7 +214,33 @@ module CP
         self.method(command).call(object)
       }
     end
-RUBY_ALIASES = {
+    
+  end
+  
+  class Path
+    
+    def self.angles(n)
+      Array.new(n).fill{|i| 2*Math::PI*(i/n)}
+    end
+    
+    def self.circle(body, w, n, r, &p)
+      self.new(body, w, self.angles(n), true) {|t|[r*Math.cos(t), r*Math.sin(t)]}
+    end
+    
+    def self.edges_from(array, circular=false)  
+      array.each_cons(2).to_a + (circular ? ft[-1] + ft[0] : [])
+    end
+    
+    def self.new(body, w, t, circular=false, p=nil, &f)
+      ft = t.collect {|ti| vec2(*f.call(ti))}
+      Path.edges_from(ft).collect{|ft0, ft1|
+        CP::Shape::Segment.new(body, ft0, ft1, w).tap{|seg| p.call(seg) if p}
+      }
+    end
+    
+  end
+    
+  RUBY_ALIASES = {
   :constraint  => CP::Constraint,
   :body => CP::Body,
   :shape => CP::Shape,
@@ -222,11 +248,11 @@ RUBY_ALIASES = {
 }.collect {|name, o|
   o.const_set :RUBY_ALIAS, name
 }
-  end
     
   class ArgumentError < ArgumentError
     def initialize(context, arg, expected, received)
       super "#{context.class} [#{arg}] expects #{expected.inspect}; received #{received.inspect}"
     end
   end
+  
 end

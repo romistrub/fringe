@@ -1,8 +1,8 @@
 Thread::abort_on_exception = true
 DEBUG = true
-
+require './Common.rb'
 module NA
-  
+
   module Atom
     def to_atom
     self
@@ -91,20 +91,11 @@ module NA
       extract(@contents.size)
       end
          
-      def start_scan(period=nil, res=0.01)
-        stop_scan 
-        l = Time.now.to_f
-        i=0
-        @thread_id = l
-        @@threads[l] = Thread.new {
-          loop {
-            t = Time.now.to_f
-            if !period || (t-l > period)
-              l = t
-              pass(process(drip)) unless @contents.empty?
-            end
-            sleep res
-          }
+      def start_scan(period=0, res=0.01)
+        stop_scan
+        @thread_id = Time.now.to_f
+        @@threads[l] = RS::TimedLooper.new(period, res) {
+          pass(process(drip)) unless @contents.empty?
         }
       end
       
