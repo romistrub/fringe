@@ -1,5 +1,16 @@
 The idea is that the "sound" (i.e. midi events) being discrete undergo real-time transformation just like a sound processor would alter a sound
 
+		# --  T  = T.update etc. for T, A, B, X, Y, Z)
+    # --  ~  = pre_update of the calling object e.g. (T~) is (T.update then T.pre_update)
+		# --  +  = post_update of the calling object
+    # --       { } and [ ] for clarity
+    # --       ^ and . denote climbing/descending execution hierarchy
+    
+		# Execution pointer progresses like:  
+		# {C}.[T~T].[A~A].[X~X]^{A}.[Y~Y]^{A}.[Z~Z]^[A+A]^{T}.[B~B]^[T+T]^{C}
+		# Christmas Tree pattern!
+	    
+
 salt -- Sequencer Alternative
 v0.1 (codename: Arrhenius)
 v1.0 (codename: Lewis)
