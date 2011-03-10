@@ -100,11 +100,9 @@ module CP
     ## Step II of automatic Gosu loop
     def draw
       clip_to(0, 0, width, height) { ## limits drawing area to the rectangle given
-        draw_rect(0, 0, width, height, Gosu::white) ## draws background
-        gl { ## executes draw cascade in a clean GL environment
-          gl_init
-          @system.draw(self);
-        } 
+        #debugger
+        gl {gl_init; draw_rect(0, 0, width, height, "(ARGB: 255/255/255/255)")} ## draws background
+        gl {gl_init; @system.draw(self)} ## executes draw cascade in a clean GL environment
       }
     end
     

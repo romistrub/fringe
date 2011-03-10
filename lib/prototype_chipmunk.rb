@@ -91,7 +91,7 @@ TD DO
 ### INITIALIZE WINDOW
 spindoc = TumbleSystem.new.start
 scene = spindoc.to_scene({:title => "Chipmunk to MIDI"})
-scene.show
+window_thread = Thread.new scene.show
 #scene.add_listener (Gosu::KbR) {system.reverse_momentum}
 
 ### INITIALIZE MIDI INTERFACE
